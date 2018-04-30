@@ -1,0 +1,4 @@
+Ranged Spell
+AOE Spell
+Resist Spell
+Teleport
