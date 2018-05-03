@@ -1,6 +1,5 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
-using utils = Utils;
 
 public class DTileMap {
     protected class DRoom {
@@ -191,6 +190,35 @@ public class DTileMap {
         return map_data[x, y];
     }//GetTileAt
 
+    // Until I find out what the craic is
+    // void BuildSpawnRoom(int spawnSizeX, int spawnSizeY) {
+    //   // Possible room sizes
+    //   int[] sizes = new int[] {5,7,9,11};
+    //
+    //   // Randomise both sizes
+    //   spawnSizeX = sizes[Random.Range(0, 4)];  // Spawn room Size X
+    //   spawnSizeY = sizes[Random.Range(0, 4)];  // Spawn room Size Y
+    //   Debug.Log("Building a spawn room - size x: " + spawnSizeX + " & size y: " + spawnSizeY);
+    // }
+
+    void CalculateSpawnRoomPosition(DRoom spawnRoom, int sizeX, int sizeY){
+      // Calculate where the room should go based on how big it is
+      // The map is 30x60 so we cannot exceed 29 on the x, or 59 on the Y
+      // Or else we will mess up the nice walls around the outside
+
+    }
+
+    void CalculateRoomSpawnPoint(int sizeX, int sizeY, int left, int top) {
+      // Calculate the mid point of each size and round down
+      int midX = Mathf.FloorToInt(sizeX/2);
+      int midY = Mathf.FloorToInt(sizeY/2);
+
+      // Add the mid point to left and top
+      spx = left + midX;
+      spy = top + midY;
+      Debug.Log("Building a spawn point - x: " + spx + " & y: " + spy);
+    }
+
     /// <summary>
     /// Chooses a corner of the map randomly,
     /// then spawns a room there. Based on the
@@ -201,86 +229,111 @@ public class DTileMap {
     void MakeSpawnRoom() {
         //Make a spawn room that always appears in one of the corners of the map
         //Should be in a list or library of rooms
-        int ssx = 9;                    //Spawn room Size X
-        int ssy = 9;                    //Spawn room Size Y
-        int ss = Random.Range(0, 4);    //Spawn Site
 
-        DRoom sr = new DRoom();
+        // Could go further by having the spawn room sizes randomise,
+        // then half it and round up for the mid points
+
+        // Thinking of having odd nums in an array [5,7,9,11]
+        // randomise the index of each to make sure the spawn room is always
+        // an odd num (and so has a mid point)
+
+        // TODO - Find out why this doesn't work as expected
+        // Randomise Spawn Room size
+        // Default sizes to 9
+        // int spawnSizeX = 9;
+        // int spawnSizeY = 9;
+        // BuildSpawnRoom(spawnSizeX, spawnSizeY);
+
+        // Possible room sizes
+        int[] sizes = new int[] {5,7,9,11};
+
+        // Randomise both sizes
+        int spawnSizeX = sizes[Random.Range(0, 4)];  // Spawn room Size X
+        int spawnSizeY = 9; // Default to 9
+        if (spawnSizeX == 11) {
+          spawnSizeY = sizes[Random.Range(0, 3)];  // Spawn room Size Y
+        } else {
+          spawnSizeY = sizes[Random.Range(0, 4)];  // Spawn room Size Y
+        }
+        int spawnSite = Random.Range(0, 4);    //Spawn Site
+
+        Debug.Log("Using spawn sizes - size x: " + spawnSizeX + " & size y: " + spawnSizeY);
+
+        DRoom spawnRoom = new DRoom();
         //Chooses between four different spawn sites
-        if (ss == 0) {
-            sr.left = 1;
-            sr.top = 1;
+        if (spawnSite == 0) {
+            spawnRoom.left = 1;
+            spawnRoom.top = 1;
+            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
-            spx = sr.left + 4;          //4 is the mid point of the room's x size
-            spy = sr.top + 4;           //4 is the mid point of the room's y size
+            CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
-        if (ss == 1) {
-            sr.left = 1;
-            sr.top = 20;
+        if (spawnSite == 1) {
+            spawnRoom.left = 1;
+            spawnRoom.top = (30-(spawnSizeY+1));
+            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
-            spx = sr.left + 4;          //4 is the mid point of the room's x size
-            spy = sr.top + 4;           //4 is the mid point of the room's y size
+            CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
-        if (ss == 2) {
-            sr.left = 50;
-            sr.top = 1;
+        if (spawnSite == 2) {
+            spawnRoom.left = (60-(spawnSizeX+1));
+            spawnRoom.top = 1;
+            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
-            spx = sr.left + 4;          //4is the mid point of the room's x size
-            spy = sr.top + 4;           //4is the mid point of the room's y size
+            CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
-        if (ss == 3) {
-            sr.left = 50;
-            sr.top = 20;
+        if (spawnSite == 3) {
+            spawnRoom.left = (60-(spawnSizeX+1));
+            spawnRoom.top = (30-(spawnSizeY+1));
+            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
-            spx = sr.left + 4;          //4 is the mid point of the room's x size
-            spy = sr.top + 4;           //4 is the mid point of the room's y size
+            CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
-        sr.width = ssx;
-        sr.height = ssy;
-        rooms.Add(sr);
+        spawnRoom.width = spawnSizeX;
+        spawnRoom.height = spawnSizeY;
+        rooms.Add(spawnRoom);
 
         //Make a exit room that always appears in one of the corners of the map
         //Should be in a list or library of rooms
-        int esx = 7;                    //Spawn Size X
-        int esy = 7;                    //Spawn Size Y
+        int exitSizeX = 7;                    //Spawn Size X
+        int exitSizeY = 7;                    //Spawn Size Y
         int es = Random.Range(0, 2);    //Spawn Site
 
-        DRoom er = new DRoom();
+        DRoom exitRoom = new DRoom();
         //Chooses between two different spawn sites
-        if (sr.left == 1) {
-            er.left = 52;
+        if ((spawnSite == 0) || (spawnSite == 1)) {
+            exitRoom.left = 52;
 
             if (es == 1) {
-                er.top = 1;
+                exitRoom.top = 1;
                 //Make the exit point
-                epx = er.left + 3;          //3 is the mid point of the room's x size
-                epy = er.top + 3;           //3 is the mid point of the room's y size
+                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
+                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
             } else {
-                er.top = 22;
+                exitRoom.top = 22;
                 //Make the exit point
-                epx = er.left + 3;          //3 is the mid point of the room's x size
-                epy = er.top + 3;           //3 is the mid point of the room's y size
+                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
+                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
             }
-        }
-        if (sr.left == 50) {
-            er.left = 3;
+        } else {
+            exitRoom.left = 3;
 
             if (es == 1) {
-                er.top = 1;
+                exitRoom.top = 1;
                 //Make the exit point
-                epx = er.left + 3;          //3 is the mid point of the room's x size
-                epy = er.top + 3;           //3 is the mid point of the room's y size
+                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
+                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
             } else {
-                er.top = 22;
+                exitRoom.top = 22;
                 //Make the exit point
-                epx = er.left + 3;          //3 is the mid point of the room's x size
-                epy = er.top + 3;           //3 is the mid point of the room's y size
+                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
+                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
             }
         }
 
-        er.width = esx;
-        er.height = esy;
-        rooms.Add(er);
+        exitRoom.width = exitSizeX;
+        exitRoom.height = exitSizeY;
+        rooms.Add(exitRoom);
     }//MakeSpawnRoom
 
     public bool InSpawnRoom(Vector3 WorldPos, Vector3 CentrePos) {
