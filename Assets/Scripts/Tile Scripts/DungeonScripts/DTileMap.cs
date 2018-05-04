@@ -1,107 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 
-public class DTileMap {
-    protected class DRoom {
-        public int left;
-        public int top;
-        public int width;
-        public int height;
-
-        public bool isConnected = false;
-        public List<DRoom> Connections = new List<DRoom>();
-
-        public int right {
-            get { return left + width - 1; }
-        }
-
-        public int bottom {
-            get { return top + height - 1; }
-        }
-
-        public int center_x {
-            get { return left + width / 2; }
-        }
-
-        public int center_y {
-            get { return top + height / 2; }
-        }
-
-        public bool CollidesWith(DRoom other) {
-            if (left > other.right - 1)
-                return false;
-
-            if (top > other.bottom - 1)
-                return false;
-
-            if (right < other.left + 1)
-                return false;
-
-            if (bottom < other.top + 1)
-                return false;
-
-            return true;
-        }//CollidesWidth
-
-        public void AddConnection(DRoom OtherRoom) {
-            if (!Connections.Contains(OtherRoom) && OtherRoom != this) {
-                Connections.Add(OtherRoom);
-            }
-        }//AddConnection
-
-        public static bool CheckConnections(DRoom StartRoom, DRoom TargetRoom) {
-            //If we are looking at the same room then we dont have an issue
-            if (StartRoom == TargetRoom) {
-                //So return that we have a connection
-                return true;
-            }
-
-            //A list of all rooms currently searched
-            List<DRoom> SearchedRooms = new List<DRoom>();
-
-            //Add the room we started in
-            SearchedRooms.Add(StartRoom);
-
-            //For each connection
-            foreach (DRoom Connection in StartRoom.Connections) {
-                //Search through the rooms
-                if (SearchRooms(ref SearchedRooms, Connection, TargetRoom)) {
-                    //And if it was successful, then we have found our room
-                    return true;
-                }
-            }
-
-            //Otherwise no route was found
-            return false;
-        }//Check Connections
-
-        private static bool SearchRooms(ref List<DRoom> SearchedRooms, DRoom CurrentRoom, DRoom TargetRoom) {
-            //Add the room we are currently looking at
-            if (!SearchedRooms.Contains(CurrentRoom)) {
-                SearchedRooms.Add(CurrentRoom);
-                Debug.Log("Room Added");
-            }
-
-            //For each further connection
-            foreach (DRoom Connection in CurrentRoom.Connections) {
-                //If this is the target room
-                if (Connection == TargetRoom) {
-                    //Then fall back through the loop
-                    return true;
-                } else {
-                    //If this connection hasn't been searched yet
-                    if (!SearchedRooms.Contains(Connection)) {
-                        Debug.Log("Searching Connection");
-                        //Continue down the chain
-                        return SearchRooms(ref SearchedRooms, Connection, TargetRoom);
-                    }
-                }
-            }
-            return false;
-        }//SearchRooms
-
-    }//DRoom
-
+public class DTileMap : DungeonRoom {
     Utils utilsInstance = new Utils();
 
     int size_x;
@@ -109,7 +9,7 @@ public class DTileMap {
 
     int[,] map_data;
 
-    public int spx, spy, epx, epy;
+    public int spawnPointX, spawnPointY, exitPointX, exitPointY;
 
     List<DRoom> rooms = new List<DRoom>();
 
@@ -117,42 +17,45 @@ public class DTileMap {
       return map_data;
     }
 
-    public DTileMap(int size_x, int size_y, TileMap TTRef) {
+    public DTileMap(int sizeX, int sizeY, TileMap TTRef) {
         GameController.mapIsDone = false;
-        this.size_x = size_x;
-        this.size_y = size_y;
+        this.size_x = sizeX;
+        this.size_y = sizeY;
 
         map_data = new int[size_x, size_y];
 
+        // Set all tiles to the Stone (floor) tile
         for (int x = 0; x < size_x; x++) {
             for (int y = 0; y < size_y; y++) {
                 map_data[x, y] = 3;
             }//for
         }//for
 
-        rooms = new List<DRoom>();
+        // Create the spawn and exit rooms
         MakeSpawnRoom();
 
         int maxFails = 50;
 
-        while (rooms.Count < 10) {
-            int rsx = Random.Range(8, 14);
-            int rsy = Random.Range(8, 10);
+        int randomRoomCountTotal = Random.Range(8, 16);
+        while (rooms.Count <= randomRoomCountTotal) {
+          // Randomise the sizes of each room
+          int roomSizeX = Random.Range(6, 15);
+          int roomSizeY = Random.Range(6, 11);
 
-            DRoom r = new DRoom();
-            r.left = Random.Range(0, size_x - rsx);
-            r.top = Random.Range(0, size_y - rsy);
-            r.width = rsx;
-            r.height = rsy;
+          DRoom room = new DRoom();
+          room.left = Random.Range(0, size_x - roomSizeX);
+          room.top = Random.Range(0, size_y - roomSizeY);
+          room.width = roomSizeX;
+          room.height = roomSizeY;
 
-            if (!RoomCollides(r)) {
-                rooms.Add(r);
-            }//if
-            else {
-                maxFails--;
-                if (maxFails <= 0)
-                    break;
-            }//else
+          if (!RoomCollides(room)) {
+              rooms.Add(room);
+          }//if
+          else {
+              maxFails--;
+              if (maxFails <= 0)
+                  break;
+          }//else
         }//while
 
         foreach (DRoom r2 in rooms) {
@@ -170,7 +73,7 @@ public class DTileMap {
 
         // Create functions pulled in from Utils
         utilsInstance.MakeWalls(map_data, size_x, size_y);
-        utilsInstance.MakePortals(map_data, spx, spy, epx, epy);
+        utilsInstance.MakePortals(map_data, spawnPointX, spawnPointY, exitPointX, exitPointY);
         utilsInstance.MakePrefabs(map_data, size_x, size_y, TTRef);
 
         GameController.mapIsDone = true;
@@ -201,41 +104,39 @@ public class DTileMap {
     //   Debug.Log("Building a spawn room - size x: " + spawnSizeX + " & size y: " + spawnSizeY);
     // }
 
-    void CalculateSpawnRoomPosition(DRoom spawnRoom, int sizeX, int sizeY){
-      // Calculate where the room should go based on how big it is
-      // The map is 30x60 so we cannot exceed 29 on the x, or 59 on the Y
-      // Or else we will mess up the nice walls around the outside
-
-    }
-
     void CalculateRoomSpawnPoint(int sizeX, int sizeY, int left, int top) {
       // Calculate the mid point of each size and round down
       int midX = Mathf.FloorToInt(sizeX/2);
       int midY = Mathf.FloorToInt(sizeY/2);
 
       // Add the mid point to left and top
-      spx = left + midX;
-      spy = top + midY;
-      Debug.Log("Building a spawn point - x: " + spx + " & y: " + spy);
+      spawnPointX = left + midX;
+      spawnPointY = top + midY;
+      // Debug.Log("Building a spawn point - x: " + spawnPointX + " & y: " + spawnPointY);
+    }
+
+    void CalculateExitRoomSpawnPoint(int sizeX, int sizeY, int left, int top) {
+      // Calculate the mid point of each size and round down
+      int midX = Mathf.FloorToInt(sizeX/2);
+      int midY = Mathf.FloorToInt(sizeY/2);
+
+      // Add the mid point to left and top
+      exitPointX = left + midX;
+      exitPointY = top + midY;
+      // Debug.Log("Building a exit point - x: " + exitPointX + " & y: " + exitPointY);
     }
 
     /// <summary>
-    /// Chooses a corner of the map randomly,
-    /// then spawns a room there. Based on the
-    /// position of the Spawn room, an exit room
-    /// is made on the opposite side in a different
-    /// corner.
+    /// Chooses a corner of the map randomly, then spawns a room there. Based on the
+    /// position of the Spawn room, an exit room is made on the opposite side in a different corner.
     /// </summary>
     void MakeSpawnRoom() {
         //Make a spawn room that always appears in one of the corners of the map
         //Should be in a list or library of rooms
 
-        // Could go further by having the spawn room sizes randomise,
-        // then half it and round up for the mid points
-
-        // Thinking of having odd nums in an array [5,7,9,11]
-        // randomise the index of each to make sure the spawn room is always
-        // an odd num (and so has a mid point)
+        // Calculate where the room should go based on how big it is
+        // The map is 30x60 so we cannot exceed 29 on the x, or 59 on the Y
+        // Or else we will mess up the nice walls around the outside
 
         // TODO - Find out why this doesn't work as expected
         // Randomise Spawn Room size
@@ -251,41 +152,41 @@ public class DTileMap {
         int spawnSizeX = sizes[Random.Range(0, 4)];  // Spawn room Size X
         int spawnSizeY = 9; // Default to 9
         if (spawnSizeX == 11) {
-          spawnSizeY = sizes[Random.Range(0, 3)];  // Spawn room Size Y
+          spawnSizeY = sizes[Random.Range(0, 3)];   // Spawn room Size Y
         } else {
-          spawnSizeY = sizes[Random.Range(0, 4)];  // Spawn room Size Y
+          spawnSizeY = sizes[Random.Range(0, 4)];   // Spawn room Size Y
         }
-        int spawnSite = Random.Range(0, 4);    //Spawn Site
+        int spawnSite = Random.Range(0, 4);         //Spawn Site
 
-        Debug.Log("Using spawn sizes - size x: " + spawnSizeX + " & size y: " + spawnSizeY);
+        // Debug.Log("Using spawn sizes - size x: " + spawnSizeX + " & size y: " + spawnSizeY);
 
         DRoom spawnRoom = new DRoom();
         //Chooses between four different spawn sites
         if (spawnSite == 0) {
             spawnRoom.left = 1;
             spawnRoom.top = 1;
-            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
+            // Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
             CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
         if (spawnSite == 1) {
             spawnRoom.left = 1;
             spawnRoom.top = (30-(spawnSizeY+1));
-            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
+            // Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
             CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
         if (spawnSite == 2) {
             spawnRoom.left = (60-(spawnSizeX+1));
             spawnRoom.top = 1;
-            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
+            // Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
             CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
         if (spawnSite == 3) {
             spawnRoom.left = (60-(spawnSizeX+1));
             spawnRoom.top = (30-(spawnSizeY+1));
-            Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
+            // Debug.Log("spawnRoom.left: " + spawnRoom.left + " spawnRoom.top: " + spawnRoom.top);
             //Make the spawn point
             CalculateRoomSpawnPoint(spawnSizeX, spawnSizeY, spawnRoom.left, spawnRoom.top);
         }
@@ -295,25 +196,27 @@ public class DTileMap {
 
         //Make a exit room that always appears in one of the corners of the map
         //Should be in a list or library of rooms
-        int exitSizeX = 7;                    //Spawn Size X
-        int exitSizeY = 7;                    //Spawn Size Y
-        int es = Random.Range(0, 2);    //Spawn Site
+        int exitSizeX = sizes[Random.Range(0, 3)];  // Spawn room Size X
+        int exitSizeY = sizes[Random.Range(0, 3)];  // Spawn room Size Y
+        int es = Random.Range(0, 2);                // Spawn Site
+
+        // Debug.Log("Using exit sizes - size x: " + exitSizeX + " & size y: " + exitSizeY);
 
         DRoom exitRoom = new DRoom();
         //Chooses between two different spawn sites
         if ((spawnSite == 0) || (spawnSite == 1)) {
-            exitRoom.left = 52;
+            exitRoom.left = (60-(exitSizeX+1));
 
             if (es == 1) {
                 exitRoom.top = 1;
                 //Make the exit point
-                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
-                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
+                CalculateExitRoomSpawnPoint(exitSizeX, exitSizeY, exitRoom.left, exitRoom.top);
+                // Debug.Log("exitRoom.left: " + exitRoom.left + " exitRoom.top: " + exitRoom.top);
             } else {
-                exitRoom.top = 22;
+                exitRoom.top = (30-(exitSizeY+3));
                 //Make the exit point
-                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
-                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
+                CalculateExitRoomSpawnPoint(exitSizeX, exitSizeY, exitRoom.left, exitRoom.top);
+                // Debug.Log("exitRoom.left: " + exitRoom.left + " exitRoom.top: " + exitRoom.top);
             }
         } else {
             exitRoom.left = 3;
@@ -321,13 +224,13 @@ public class DTileMap {
             if (es == 1) {
                 exitRoom.top = 1;
                 //Make the exit point
-                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
-                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
+                CalculateExitRoomSpawnPoint(exitSizeX, exitSizeY, exitRoom.left, exitRoom.top);
+                // Debug.Log("exitRoom.left: " + exitRoom.left + " exitRoom.top: " + exitRoom.top);
             } else {
-                exitRoom.top = 22;
+                exitRoom.top = (30-(exitSizeY+3));
                 //Make the exit point
-                epx = exitRoom.left + 3;          //3 is the mid point of the room's x size
-                epy = exitRoom.top + 3;           //3 is the mid point of the room's y size
+                CalculateExitRoomSpawnPoint(exitSizeX, exitSizeY, exitRoom.left, exitRoom.top);
+                // Debug.Log("exitRoom.left: " + exitRoom.left + " exitRoom.top: " + exitRoom.top);
             }
         }
 
@@ -335,20 +238,6 @@ public class DTileMap {
         exitRoom.height = exitSizeY;
         rooms.Add(exitRoom);
     }//MakeSpawnRoom
-
-    public bool InSpawnRoom(Vector3 WorldPos, Vector3 CentrePos) {
-        for (int i = -4; i < 4; i++) {
-            for (int j = -4; j < 4; j++) {
-                CentrePos = CentrePos + new Vector3(i, 0, j);
-
-                if (WorldPos.x == CentrePos.x && WorldPos.y == CentrePos.y) {
-                    return true;
-                }//if
-            }//for
-        }//for
-
-        return false;
-    }//InSpawnRoom
 
     void MakeRoom(DRoom r) {
         if (r == rooms[0]) {

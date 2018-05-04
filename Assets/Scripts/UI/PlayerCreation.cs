@@ -59,7 +59,7 @@ public class PlayerCreation : MonoBehaviour {
 
     void Update() {
         if (Name != null) {
-            playerName = Name.text;
+            SetPlayerName(Name.text);
         }
         if (Description != null) {
             if (!Description.enabled) {
@@ -96,6 +96,10 @@ public class PlayerCreation : MonoBehaviour {
                 }
             }
         }
+    }
+
+    public void SetPlayerName(string Name) {
+      PlayerStats.PlayerName = Name;
     }
 
     public void SetFighter() {

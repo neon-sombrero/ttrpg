@@ -22,11 +22,13 @@ public class PlayerStats
     //private int WIS = 0;
     //private int CHA = 0;
 
+    public static string PlayerName = "Player";
+
     // Use this for initialization
     void Start ()
     {
         switch (playerClass)
-        {           
+        {
             case PlayerClass.Fighter:
                 //STR = 15;
                 //DEX = 12;
@@ -68,5 +70,5 @@ public class PlayerStats
         }//switch
 
 	}//start
-	
+
 }
