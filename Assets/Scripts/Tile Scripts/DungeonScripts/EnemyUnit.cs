@@ -17,6 +17,12 @@ public class EnemyUnit : MonoBehaviour
 
 	}
 
+	void OnTriggerStay(Collider other) {
+			if ((other.gameObject.tag == "Player") && (Input.GetKeyUp(KeyCode.E))) {
+				
+			}//if
+	}//OnTriggerStay
+
 	void Update()
 	{
 		if(map != null)
